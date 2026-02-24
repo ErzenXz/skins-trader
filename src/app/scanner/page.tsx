@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store";
-import { useContracts, useRunScan, useSaveSettings, useSettings } from "@/lib/queries";
+import { useContracts, useIngestSkins, useRunScan, useSaveSettings, useSettings } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { Play, Pause, RotateCcw, Loader2, ArrowRight } from "lucide-react";
 import { useState } from "react";
@@ -26,6 +26,7 @@ export default function ScannerPage() {
   const { isScanning, scanProgress, startScan, stopScan } = useAppStore();
   const { data: contracts = [], isLoading } = useContracts();
   const runScan = useRunScan();
+  const ingestSkins = useIngestSkins();
   const { data: settings } = useSettings();
   const saveSettings = useSaveSettings();
   const [maxCost, setMaxCost] = useState([50]);
@@ -60,6 +61,16 @@ export default function ScannerPage() {
       toast.error(message);
     } finally {
       stopScan();
+    }
+  }
+
+  async function handleRefreshMarket() {
+    try {
+      const result = await ingestSkins.mutateAsync({ pages: 3 });
+      toast.success(`Market data refreshed: ${result.saved} skins saved`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Refresh failed";
+      toast.error(message);
     }
   }
 
@@ -143,8 +154,14 @@ export default function ScannerPage() {
                     {runScan.isPending ? "Scanning..." : "Start Scan"}
                   </Button>
                 )}
-                <Button variant="outline" size="icon" onClick={stopScan}>
-                  <RotateCcw className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRefreshMarket}
+                  disabled={ingestSkins.isPending}
+                  title="Refresh market data"
+                >
+                  <RotateCcw className={cn("h-4 w-4", ingestSkins.isPending && "animate-spin")} />
                 </Button>
               </div>
             </div>

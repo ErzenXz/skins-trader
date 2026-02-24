@@ -5,6 +5,7 @@ import { userSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { runScanForUser } from "@/lib/scan";
 import { ensureUserSettingsTable } from "@/lib/db/ensure-user-settings";
+import { ensureFreshMarketSkins } from "@/lib/market-ingest";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,13 +30,22 @@ export async function POST(request: NextRequest) {
       maxCost?: number;
     };
 
+    const market = await ensureFreshMarketSkins({
+      minRows: 150,
+      maxAgeMinutes: 60,
+      ingestPages: 3,
+    });
+
     const result = await runScanForUser(session.user.id, {
       rarity: body.rarity,
       minROI: typeof body.minROI === "number" ? body.minROI : undefined,
       maxCost: typeof body.maxCost === "number" ? body.maxCost : undefined,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      market,
+    });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -4,6 +4,7 @@ import { userSettings } from "@/lib/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { runScanForUser } from "@/lib/scan";
 import { ensureUserSettingsTable } from "@/lib/db/ensure-user-settings";
+import { ensureFreshMarketSkins } from "@/lib/market-ingest";
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -16,6 +17,12 @@ export async function GET(request: NextRequest) {
   }
 
   await ensureUserSettingsTable();
+
+  const market = await ensureFreshMarketSkins({
+    minRows: 150,
+    maxAgeMinutes: 60,
+    ingestPages: 4,
+  });
 
   const users = await db
     .select({ userId: userSettings.userId })
@@ -36,6 +43,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    market,
     scannedUsers,
     failedUsers,
   });

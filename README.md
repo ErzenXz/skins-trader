@@ -40,6 +40,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 1. Sign in and open `/settings`
 2. Add your Steam API key and click **Save Settings**
 3. Open `/scanner` and click **Start Scan**
+4. (Optional) click the refresh icon in Scanner to force a market data ingest
 
 ### Vercel cron auto-scan
 
@@ -55,3 +56,5 @@ In Vercel Project Settings → Environment Variables, add:
 - `NEXT_PUBLIC_APP_URL`
 
 Then enable **Auto-Scan** in Settings for each user account that should be scanned by cron.
+
+Cron and manual scans now auto-refresh Steam market skin data (when stale) before computing contracts.

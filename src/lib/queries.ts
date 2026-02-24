@@ -186,6 +186,33 @@ export function useRunScan() {
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["alerts"] });
+      qc.invalidateQueries({ queryKey: ["skins"] });
+    },
+  });
+}
+
+export function useIngestSkins() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload?: { pages?: number }) => {
+      const res = await fetch("/api/skins/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {}),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to refresh market data");
+      }
+
+      return data as { fetched: number; parsed: number; saved: number };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skins"] });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
     },
   });
 }
