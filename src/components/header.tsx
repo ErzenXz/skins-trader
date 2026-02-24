@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Loader2, LogOut, User } from "lucide-react";
+import { Search, Loader2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,12 +13,30 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/lib/store";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useRunScan } from "@/lib/queries";
+import { toast } from "sonner";
 
 export function Header() {
   const router = useRouter();
-  const { isScanning, scanProgress, startScan, filters, setFilter } =
+  const { isScanning, scanProgress, startScan, stopScan, filters, setFilter } =
     useAppStore();
   const { data: session } = useSession();
+  const runScan = useRunScan();
+
+  async function handleScan() {
+    if (isScanning || runScan.isPending) return;
+
+    startScan();
+    try {
+      const result = await runScan.mutateAsync({});
+      toast.success(`Scan complete: ${result.contractsGenerated} contracts generated`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scan failed";
+      toast.error(message);
+    } finally {
+      stopScan();
+    }
+  }
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -48,8 +66,8 @@ export function Header() {
             <span>Scanning… {Math.min(100, Math.round(scanProgress))}%</span>
           </div>
         ) : (
-          <Button size="sm" onClick={startScan}>
-            Scan Market
+          <Button size="sm" onClick={handleScan} disabled={runScan.isPending}>
+            {runScan.isPending ? "Scanning..." : "Scan Market"}
           </Button>
         )}
 

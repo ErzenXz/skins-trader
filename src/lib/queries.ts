@@ -5,6 +5,8 @@ import type {
   Alert,
   AlertConfig,
   DashboardStats,
+  UserSettings,
+  ScanResult,
 } from "@/lib/types";
 
 async function fetcher<T>(url: string): Promise<T> {
@@ -123,6 +125,68 @@ export function useToggleAlertConfig() {
     mutationFn: (id: string) =>
       fetch(`/api/alert-configs/${id}`, { method: "PATCH" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-configs"] }),
+  });
+}
+
+// ---- Settings ----
+
+export function useSettings() {
+  return useQuery<UserSettings>({
+    queryKey: ["settings"],
+    queryFn: () => fetcher("/api/settings"),
+  });
+}
+
+export function useSaveSettings() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to save settings");
+      }
+
+      return res.json() as Promise<UserSettings>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+  });
+}
+
+// ---- Scanner ----
+
+export function useRunScan() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload?: { rarity?: string; minROI?: number; maxCost?: number }) => {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {}),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Scan failed");
+      }
+
+      return data as ScanResult;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["alerts"] });
+    },
   });
 }
 

@@ -50,6 +50,22 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp" }),
 });
 
+export const userSettings = sqliteTable("user_settings", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
+  steamApiKey: text("steam_api_key"),
+  rateLimit: integer("rate_limit").notNull().default(20),
+  cacheEnabled: integer("cache_enabled", { mode: "boolean" }).notNull().default(true),
+  cacheTTL: integer("cache_ttl").notNull().default(300),
+  autoRefresh: integer("auto_refresh", { mode: "boolean" }).notNull().default(true),
+  refreshInterval: integer("refresh_interval").notNull().default(60),
+  notifications: integer("notifications", { mode: "boolean" }).notNull().default(true),
+  currency: text("currency").notNull().default("USD"),
+  autoScan: integer("auto_scan", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // ============================================
 // App Tables
 // ============================================

@@ -34,3 +34,24 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## TradeUP Hunter Setup
+
+1. Sign in and open `/settings`
+2. Add your Steam API key and click **Save Settings**
+3. Open `/scanner` and click **Start Scan**
+
+### Vercel cron auto-scan
+
+This repo includes `vercel.json` with a cron job hitting `/api/cron/scan` every 30 minutes.
+
+In Vercel Project Settings → Environment Variables, add:
+
+- `CRON_SECRET` (same value used to secure cron endpoint)
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `NEXT_PUBLIC_APP_URL`
+
+Then enable **Auto-Scan** in Settings for each user account that should be scanned by cron.

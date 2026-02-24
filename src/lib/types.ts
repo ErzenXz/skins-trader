@@ -110,3 +110,23 @@ export interface PriceHistory {
   price: number;
   volume: number;
 }
+
+export interface UserSettings {
+  steamApiKeySet: boolean;
+  steamApiKeyMasked: string | null;
+  rateLimit: number;
+  cacheEnabled: boolean;
+  cacheTTL: number;
+  autoRefresh: boolean;
+  refreshInterval: number;
+  notifications: boolean;
+  currency: "USD" | "EUR" | "GBP";
+  autoScan: boolean;
+}
+
+export interface ScanResult {
+  totalScanned: number;
+  contractsGenerated: number;
+  profitableFound: number;
+  bestRoi: number;
+}

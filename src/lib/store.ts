@@ -29,6 +29,8 @@ const defaultFilters: FilterState = {
   search: "",
 };
 
+let scanTimer: ReturnType<typeof setInterval> | null = null;
+
 export const useAppStore = create<AppStore>((set, get) => ({
   // Filters
   filters: defaultFilters,
@@ -40,18 +42,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
   isScanning: false,
   scanProgress: 0,
   startScan: () => {
+    if (scanTimer) clearInterval(scanTimer);
+
     set({ isScanning: true, scanProgress: 0 });
-    const interval = setInterval(() => {
+
+    scanTimer = setInterval(() => {
       const current = get().scanProgress;
-      if (current >= 100) {
-        clearInterval(interval);
-        set({ isScanning: false, scanProgress: 100 });
-        return;
-      }
-      set({ scanProgress: current + Math.random() * 15 });
+      if (current >= 95) return;
+      set({ scanProgress: Math.min(95, current + Math.random() * 12) });
     }, 400);
   },
-  stopScan: () => set({ isScanning: false, scanProgress: 0 }),
+  stopScan: () => {
+    if (scanTimer) {
+      clearInterval(scanTimer);
+      scanTimer = null;
+    }
+    set({ isScanning: false, scanProgress: 0 });
+  },
 
   // UI
   sidebarOpen: true,

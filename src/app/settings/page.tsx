@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -17,16 +16,56 @@ import {
 } from "@/components/ui/select";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
+import { useSaveSettings, useSettings } from "@/lib/queries";
+import type { UserSettings } from "@/lib/types";
+
+type DraftSettings = {
+  apiKey: string;
+  cacheEnabled?: boolean;
+  cacheTTL?: string;
+  autoRefresh?: boolean;
+  refreshInterval?: string;
+  rateLimit?: string;
+  notifications?: boolean;
+  currency?: UserSettings["currency"];
+  autoScan?: boolean;
+};
 
 export default function SettingsPage() {
-  const [apiKey, setApiKey] = useState("");
-  const [cacheEnabled, setCacheEnabled] = useState(true);
-  const [cacheTTL, setCacheTTL] = useState("300");
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState("60");
-  const [rateLimit, setRateLimit] = useState("20");
-  const [notifications, setNotifications] = useState(true);
-  const [currency, setCurrency] = useState("USD");
+  const { data: settings } = useSettings();
+  const saveSettings = useSaveSettings();
+  const [draft, setDraft] = useState<DraftSettings>({ apiKey: "" });
+
+  const cacheEnabled = draft.cacheEnabled ?? settings?.cacheEnabled ?? true;
+  const cacheTTL = draft.cacheTTL ?? String(settings?.cacheTTL ?? 300);
+  const autoRefresh = draft.autoRefresh ?? settings?.autoRefresh ?? true;
+  const refreshInterval = draft.refreshInterval ?? String(settings?.refreshInterval ?? 60);
+  const rateLimit = draft.rateLimit ?? String(settings?.rateLimit ?? 20);
+  const notifications = draft.notifications ?? settings?.notifications ?? true;
+  const currency = draft.currency ?? settings?.currency ?? "USD";
+  const autoScan = draft.autoScan ?? settings?.autoScan ?? false;
+
+  async function onSave() {
+    try {
+      await saveSettings.mutateAsync({
+        rateLimit: Number(rateLimit),
+        cacheEnabled,
+        cacheTTL: Number(cacheTTL),
+        autoRefresh,
+        refreshInterval: Number(refreshInterval),
+        notifications,
+        currency,
+        autoScan,
+        ...(draft.apiKey.trim() ? { steamApiKey: draft.apiKey.trim() } : {}),
+      });
+
+      setDraft((prev) => ({ ...prev, apiKey: "" }));
+      toast.success("Settings saved!");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save settings";
+      toast.error(message);
+    }
+  }
 
   return (
     <AppShell>
@@ -46,18 +85,22 @@ export default function SettingsPage() {
               <Label className="text-xs">Steam Web API Key</Label>
               <Input
                 type="password"
-                placeholder="Enter your key..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={settings?.steamApiKeySet ? "Saved key exists (enter new key to replace)" : "Enter your key..."}
+                value={draft.apiKey}
+                onChange={(e) => setDraft((prev) => ({ ...prev, apiKey: e.target.value }))}
                 className="font-mono text-sm"
               />
               <p className="text-[10px] text-muted-foreground">
                 From steamcommunity.com/dev/apikey
+                {settings?.steamApiKeyMasked ? ` • Saved: ${settings.steamApiKeyMasked}` : ""}
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Rate Limit</Label>
-              <Select value={rateLimit} onValueChange={setRateLimit}>
+              <Select
+                value={rateLimit}
+                onValueChange={(value) => setDraft((prev) => ({ ...prev, rateLimit: value }))}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="10">10/min (Safe)</SelectItem>
@@ -80,12 +123,18 @@ export default function SettingsPage() {
                   Reduces API calls
                 </p>
               </div>
-              <Switch checked={cacheEnabled} onCheckedChange={setCacheEnabled} />
+              <Switch
+                checked={cacheEnabled}
+                onCheckedChange={(value) => setDraft((prev) => ({ ...prev, cacheEnabled: value }))}
+              />
             </div>
             {cacheEnabled && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Cache Duration</Label>
-                <Select value={cacheTTL} onValueChange={setCacheTTL}>
+                <Select
+                  value={cacheTTL}
+                  onValueChange={(value) => setDraft((prev) => ({ ...prev, cacheTTL: value }))}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="60">1 minute</SelectItem>
@@ -102,6 +151,19 @@ export default function SettingsPage() {
         <Card className="p-5">
           <h3 className="mb-4 text-sm font-semibold">Auto-Refresh</h3>
           <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-xs font-medium">Enable Vercel Cron Auto-Scan</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Runs scheduled scans on your account
+                </p>
+              </div>
+              <Switch
+                checked={autoScan}
+                onCheckedChange={(value) => setDraft((prev) => ({ ...prev, autoScan: value }))}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium">Auto-refresh prices</p>
@@ -109,12 +171,18 @@ export default function SettingsPage() {
                   Keep data up to date
                 </p>
               </div>
-              <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+              <Switch
+                checked={autoRefresh}
+                onCheckedChange={(value) => setDraft((prev) => ({ ...prev, autoRefresh: value }))}
+              />
             </div>
             {autoRefresh && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Interval</Label>
-                <Select value={refreshInterval} onValueChange={setRefreshInterval}>
+                <Select
+                  value={refreshInterval}
+                  onValueChange={(value) => setDraft((prev) => ({ ...prev, refreshInterval: value }))}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="30">30 seconds</SelectItem>
@@ -133,7 +201,12 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs">Currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
+              <Select
+                value={currency}
+                onValueChange={(value) =>
+                  setDraft((prev) => ({ ...prev, currency: value as UserSettings["currency"] }))
+                }
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD ($)</SelectItem>
@@ -149,15 +222,18 @@ export default function SettingsPage() {
                   Browser push notifications
                 </p>
               </div>
-              <Switch checked={notifications} onCheckedChange={setNotifications} />
+              <Switch
+                checked={notifications}
+                onCheckedChange={(value) => setDraft((prev) => ({ ...prev, notifications: value }))}
+              />
             </div>
           </div>
         </Card>
 
         <div className="flex justify-end pb-8">
-          <Button onClick={() => toast.success("Settings saved!")}>
+          <Button onClick={onSave} disabled={saveSettings.isPending}>
             <Save className="mr-2 h-4 w-4" />
-            Save Settings
+            {saveSettings.isPending ? "Saving..." : "Save Settings"}
           </Button>
         </div>
       </div>

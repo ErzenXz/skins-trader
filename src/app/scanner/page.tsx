@@ -16,18 +16,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store";
-import { useContracts } from "@/lib/queries";
+import { useContracts, useRunScan, useSaveSettings, useSettings } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { Play, Pause, RotateCcw, Loader2, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function ScannerPage() {
   const { isScanning, scanProgress, startScan, stopScan } = useAppStore();
   const { data: contracts = [], isLoading } = useContracts();
+  const runScan = useRunScan();
+  const { data: settings } = useSettings();
+  const saveSettings = useSaveSettings();
   const [maxCost, setMaxCost] = useState([50]);
   const [minROI, setMinROI] = useState([10]);
-  const [autoScan, setAutoScan] = useState(false);
   const [rarity, setRarity] = useState("all");
+
+  async function handleAutoScanToggle(next: boolean) {
+    try {
+      await saveSettings.mutateAsync({ autoScan: next });
+      toast.success(next ? "Auto-scan enabled" : "Auto-scan disabled");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update auto-scan";
+      toast.error(message);
+    }
+  }
+
+  async function handleStartScan() {
+    if (isScanning || runScan.isPending) return;
+
+    startScan();
+    try {
+      const result = await runScan.mutateAsync({
+        rarity,
+        minROI: minROI[0],
+        maxCost: maxCost[0],
+      });
+      toast.success(
+        `Scan complete: ${result.contractsGenerated} contracts (${result.profitableFound} profitable)`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scan failed";
+      toast.error(message);
+    } finally {
+      stopScan();
+    }
+  }
 
   // Filter contracts based on scanner settings
   let results = contracts;
@@ -88,7 +122,13 @@ export default function ScannerPage() {
                     Repeat every 5 minutes
                   </p>
                 </div>
-                <Switch checked={autoScan} onCheckedChange={setAutoScan} />
+                <Switch
+                  checked={settings?.autoScan ?? false}
+                  onCheckedChange={(checked) => {
+                    void handleAutoScanToggle(checked);
+                  }}
+                  disabled={saveSettings.isPending}
+                />
               </div>
 
               <div className="flex gap-2">
@@ -98,9 +138,9 @@ export default function ScannerPage() {
                     Stop
                   </Button>
                 ) : (
-                  <Button onClick={startScan} className="flex-1">
+                  <Button onClick={handleStartScan} className="flex-1" disabled={runScan.isPending}>
                     <Play className="mr-2 h-4 w-4" />
-                    Start Scan
+                    {runScan.isPending ? "Scanning..." : "Start Scan"}
                   </Button>
                 )}
                 <Button variant="outline" size="icon" onClick={stopScan}>
